@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uucastle.repository.file.FilevirtualTrackerDao">
+	<!--  com.uucastlecastle.entity.file.Filevirtual -->
+    <resultMap id="base" type="BaseFilevirtualTracker">
+      <id column="ID" jdbcType="VARCHAR" property="trackerId"/>
+      <!--<association property="loginLog" column="ID" javaType="LoginLog" select="getLoginLogById" />
+      <collection  property="poss"     column="ID" ofType="basePos" select="getPoss"/> -->
+    </resultMap> 
+    <!--<resultMap id="LoginLog" type="LoginLog" ></resultMap>-->
+    <resultMap id="ZNodes" type="com.uucastle.common.utils.tree.entity.ZNodes"></resultMap>
+    <!--<resultMap id="basePos" type="BasePos"></resultMap>-->
+    <!-- 防止密码外泄，取消密码列 -->
+    <select id="find" resultMap="base" parameterType="BaseFilevirtualTracker">
+		SELECT tracker.*, org.name as orgName
+		FROM jy_base_filevirtual_tracker tracker
+		LEFT JOIN jy_base_scan_gun gun ON gun.gunNo = tracker.gunNo
+      	LEFT JOIN JY_BAS_ORG org ON org.id = gun.orgId
+		WHERE 1=1
+       	<if test="gunNo != null and gunNo!='' ">
+        	and tracker.gunNo = #{gunNo}
+       	</if>
+		<if test="trackerId != null ">
+			and tracker.id = #{trackerId}
+		</if>
+    </select>
+    <!--  防止密码外泄，取消密码列 -->
+ 	<select id="findByPage"  resultMap="base" parameterType="BaseFilevirtualTracker">
+		SELECT tracker.*, org.name as orgName,fvirtual.fileName
+		FROM jy_base_filevirtual_tracker tracker
+		LEFT JOIN jy_base_filevirtual fvirtual ON fvirtual.id = tracker.fileId
+		LEFT JOIN jy_base_scan_gun gun ON gun.gunNo = tracker.gunNo
+		LEFT JOIN JY_BASE_ORG org ON org.id = gun.orgId
+		<where>
+			<if test="param.fileId != null and param.fileId!='' ">
+				AND tracker.fileId = #{param.fileId}
+			</if>
+		   	<if test="param.gunNo != null and param.gunNo!='' ">
+				AND tracker.gunNo LIKE CONCAT('%',#{param.gunNo},'%')
+		   	</if>
+		   	<if test="param.barcode!= null">
+				AND tracker.barcode LIKE CONCAT('%',#{param.barcode},'%')
+		   	</if>
+		   	<if test="param.isValid != null ">
+				AND tracker.isValid = #{param.isValid}
+		   	</if>
+		</where>
+        ORDER BY tracker.createTime desc
+    </select>
+    <select id="count"  resultType="int" parameterType="BaseFilevirtualTracker">
+       SELECT count(*) FROM jy_base_filevirtual_tracker t  WHERE 1=1
+    </select>
+ 	<insert id="insert"  parameterType="BaseFilevirtualTracker">
+		<![CDATA[
+		INSERT INTO jy_base_filevirtual_tracker(id,fileId,gunNo,barcode,isValid,createTime,description)
+		VALUES (#{trackerId},#{fileId},#{gunNo},#{barcode},#{isValid},#{createTime},#{description})
+		]]>
+	</insert>
+	<delete id="delete" parameterType="BaseFilevirtualTracker">
+		delete from jy_base_filevirtual_tracker
+		WHERE id = #{trackerId}
+	</delete>
+	<delete id="deleteBatch" parameterType ="java.util.List">
+		DELETE FROM jy_base_filevirtual_tracker WHERE id in(
+		<foreach item="o" collection="list" open="" separator="," close="" >
+			#{o.trackerId}
+		</foreach>
+		)
+	</delete>
+	<update id="update" parameterType="BaseFilevirtualTracker">
+		UPDATE jy_base_filevirtual_tracker tracker
+		SET tracker.updateTime = #{updateTime}
+		WHERE tracker.gunNo = #{gunNo} and tracker.barcode = #{barcode}
+	</update>
+    <!-- 这方法能获取密码和盐 -->
+    <select id="findFormatByFileName"  resultMap="base" parameterType="String">
+		<![CDATA[
+       	SELECT file.*
+       	FROM jy_base_filevirtual_tracker file
+       	WHERE 1=1
+       		AND file.isvalid='1'
+       		AND file.fileName = #{fileName,jdbcType=VARCHAR}
+       ]]>  
+    </select>
+    <select id="findFileById"  resultMap="base" parameterType="String">
+		SELECT  file.*,org.name as orgName
+       	FROM jy_base_filevirtual_tracker file
+       	LEFT JOIN JY_BASE_ORG org ON org.id = file.orgId
+        WHERE file.fileId = #{fileId}
+    </select>
+	<select id="getOrgs" resultMap="ZNodes">
+		SELECT org.id,org.pId, org.name, 'o' as other
+		FROM jy_base_org org
+		WHERE org.isValid = '1'
+	</select>
+    <select id="findCountByTracker" parameterType="BaseFilevirtualTracker" resultType="int">
+       	SELECT COUNT(*)
+		FROM jy_base_filevirtual_tracker tracker
+       	WHERE  tracker.gunNo = #{gunNo} and tracker.barcode = #{barcode}
+    </select> 
+</mapper>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uucastle.repository.file.FileImageDao">
+	<!--  com.uucastlecastle.entity.file.File -->
+    <resultMap id="base" type="FileImage">
+      <id column="ID" jdbcType="VARCHAR" property="imageId"/>
+      <!--<association property="loginLog" column="ID" javaType="LoginLog" select="getLoginLogById" />
+      <collection  property="poss"     column="ID" ofType="basePos" select="getPoss"/> -->
+    </resultMap> 
+    <!--<resultMap id="LoginLog" type="LoginLog" ></resultMap>-->
+    <resultMap id="ZNodes" type="com.uucastle.common.utils.tree.entity.ZNodes"></resultMap>
+    <!--<resultMap id="basePos" type="BasePos"></resultMap>-->
+    <!-- 防止密码外泄，取消密码列 -->
+    <select id="find" resultMap="base" parameterType="FileImage">
+		SELECT file.*, org.name as orgName
+		FROM jy_base_file_image file
+      	LEFT JOIN JY_BASE_ORG org
+		ON org.id = file.orgId
+		WHERE 1=1
+       	<if test="fileName != null and fileName!='' ">
+        	and file.fileName = #{fileName}
+       	</if>
+       	<if test="fileId != null ">
+        	and file.id = #{fileId}
+       	</if>
+    </select>
+    <!--  防止密码外泄，取消密码列 -->
+ 	<select id="findByPage"  resultMap="base" parameterType="FileImage">
+		SELECT fileImage.*
+		FROM jy_base_file_image fileImage
+		<where>
+		   	<if test="param.fileId != null and param.fileId!='' ">
+				AND fileImage.fileId = #{param.fileId}
+		   	</if>
+		</where>
+        ORDER BY fileImage.createTime desc
+    </select>  
+    <select id="count"  resultType="int" parameterType="FileImage">
+       SELECT count(*) FROM jy_base_file_image t  WHERE 1=1
+    </select>        
+ 	<insert id="insert"  parameterType="FileImage">
+		<![CDATA[
+		INSERT INTO jy_base_file_image(id,fileId,barcode,createTime,description)
+		VALUES (#{imageId},#{fileId},#{barcode},#{createTime},#{description})
+		]]>
+	</insert>
+	<delete id="delete" parameterType="FileImage">
+		delete from jy_base_file_image
+		WHERE id = #{imageId}
+	</delete>
+	<delete id="deleteBatch" parameterType ="java.util.List">
+		DELETE FROM jy_base_file_image WHERE id in(
+		<foreach item="o" collection="list" open="" separator="," close="" >
+			#{o.fileId}
+		</foreach>
+		)
+	</delete>
+	<update id="update" parameterType="FileImage">
+		UPDATE jy_base_file_image
+		SET updateTime = #{updateTime},
+			description = #{description}
+		WHERE id = #{imageId}
+	</update>
+    <!-- 这方法能获取密码和盐 -->
+    <select id="findFormatByFileId"  resultMap="base" parameterType="String">
+		<![CDATA[
+       	SELECT file.*
+       	FROM jy_base_file_image file
+       	WHERE 1=1
+       		AND file.isvalid='1'
+       		AND file.fileName = #{fileName,jdbcType=VARCHAR}
+       ]]>  
+    </select>
+    <select id="findFileById"  resultMap="base" parameterType="String">
+		SELECT  file.*,org.name as orgName
+       	FROM jy_base_file_image file
+       	LEFT JOIN JY_BASE_ORG org ON org.id = file.orgId
+        WHERE file.imageId = #{imageId}
+    </select>
+	<select id="getOrgs" resultMap="ZNodes">
+		SELECT org.id,org.pId, org.name, 'o' as other
+		FROM jy_base_org org
+		WHERE org.isValid = '1'
+	</select>
+    <select id="findCountByFileId" resultType="int">
+       	SELECT COUNT(*)
+		FROM jy_base_file_image file
+       	WHERE  file.fileId=#{fileId}
+    </select> 
+</mapper>

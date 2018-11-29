@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uucastle.repository.file.ScanGunDao">
+	<!--  com.uucastlecastle.entity.file.ScanGun -->
+    <resultMap id="base" type="BaseScanGun">
+      <id column="ID" jdbcType="VARCHAR" property="gunId"/>
+      <!--<association property="loginLog" column="ID" javaType="LoginLog" select="getLoginLogById" />
+      <collection  property="poss"     column="ID" ofType="basePos" select="getPoss"/> -->
+    </resultMap>
+    <!--<resultMap id="LoginLog" type="LoginLog" ></resultMap>-->
+    <resultMap id="ZNodes" type="com.uucastle.common.utils.tree.entity.ZNodes"></resultMap>
+    <!--<resultMap id="basePos" type="BasePos"></resultMap>-->
+    <select id="find" resultMap="base" parameterType="BaseScanGun">
+		SELECT gun.*, org.name as orgName
+		FROM jy_base_scan_gun gun
+      	LEFT JOIN JY_BASE_ORG org ON org.id = gun.orgId
+		WHERE 1=1
+       	<if test="gunNo != null and gunNo != '' ">
+        	and gun.gunNo = #{gunNo}
+       	</if>
+       	<if test="gunId != null ">
+        	and gun.id = #{gunId}
+       	</if>
+    </select>
+    <!--  防止密码外泄，取消密码列 -->
+ 	<select id="findByPage"  resultMap="base" parameterType="BaseScanGun">
+		SELECT gun.*, org.name as orgName
+		FROM jy_base_scan_gun gun
+		LEFT JOIN JY_BASE_ORG org ON org.id = gun.orgId
+		<where>
+		   	<if test="param.gunNo != null and param.gunNo!='' ">
+				AND gun.gunNo LIKE CONCAT('%',#{param.gunNo},'%')
+		   	</if>
+			<if test="param.orgId != null ">
+				AND gun.orgId = #{param.orgId}
+		   	</if>
+		   	<if test="param.isValid != null ">
+				AND gun.isValid = #{param.isValid}
+		   	</if>
+		</where>
+        ORDER BY gun.createTime desc
+    </select>
+    <select id="count"  resultType="int" parameterType="BaseScanGun">
+       SELECT count(*) FROM jy_base_scan_gun t  WHERE 1=1
+    </select>
+ 	<insert id="insert"  parameterType="BaseScanGun">
+		<![CDATA[
+		INSERT INTO jy_base_scan_gun(id,gunNo,orgId,isValid,createTime,description)
+		VALUES (#{gunId},#{gunNo},#{orgId},#{isValid},#{createTime},#{description})
+		]]>
+	</insert>
+	<delete id="delete" parameterType="BaseScanGun">
+		delete from jy_base_scan_gun
+		WHERE id = #{gunId}
+	</delete>
+	<delete id="deleteBatch" parameterType ="java.util.List">
+		DELETE FROM jy_base_scan_gun WHERE id in(
+		<foreach item="o" collection="list" open="" separator="," close="" >
+			#{o.gunId}
+		</foreach>
+		)
+	</delete>
+	<update id="update" parameterType="BaseScanGun">
+		UPDATE jy_base_scan_gun
+		SET isValid = #{isValid},
+			orgId = #{orgId},
+			updateTime = #{updateTime},
+			description = #{description}
+		WHERE id = #{gunId}
+	</update>
+    <!-- 这方法能获取密码和盐 -->
+    <select id="findFormatByGunNo"  resultMap="base" parameterType="String">
+		<![CDATA[
+       	SELECT gun.*
+       	FROM jy_base_scan_gun gun
+       	WHERE 1=1
+       		AND gun.isvalid='1'
+       		AND gun.gunNo = #{gunNo,jdbcType=VARCHAR}
+       ]]>
+    </select>
+    <select id="findGunById"  resultMap="base" parameterType="String">
+		SELECT  gun.*,org.name as orgName
+       	FROM jy_base_scan_gun gun
+       	LEFT JOIN JY_BASE_ORG org ON org.id = gun.orgId
+        WHERE gun.gunId = #{gunId}
+    </select>
+	<select id="getOrgs" resultMap="ZNodes">
+		SELECT org.id,org.pId, org.name, 'o' as other
+		FROM jy_base_org org
+		WHERE org.isValid = '1'
+	</select>
+    <select id="findCountByGunNo" resultType="int">
+       	SELECT COUNT(*)
+		FROM jy_base_scan_gun gun
+       	WHERE gun.gunNo=#{gunNo}
+    </select>
+</mapper>

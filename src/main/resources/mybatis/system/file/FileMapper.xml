@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uucastle.repository.file.FileDao">
+	<!--  com.uucastlecastle.entity.file.File -->
+    <resultMap id="base" type="BaseFile">
+      <id column="ID" jdbcType="VARCHAR" property="fileId"/>
+      <!--<association property="loginLog" column="ID" javaType="LoginLog" select="getLoginLogById" />
+      <collection  property="poss"     column="ID" ofType="basePos" select="getPoss"/> -->
+    </resultMap> 
+    <!--<resultMap id="LoginLog" type="LoginLog" ></resultMap>-->
+    <resultMap id="ZNodes" type="com.uucastle.common.utils.tree.entity.ZNodes"></resultMap>
+    <!--<resultMap id="basePos" type="BasePos"></resultMap>-->
+    <!-- 防止密码外泄，取消密码列 -->
+    <select id="find" resultMap="base" parameterType="BaseFile">
+		SELECT file.*, org.name as orgName
+		FROM jy_base_file file
+      	LEFT JOIN JY_BASE_ORG org
+		ON org.id = file.orgId
+		WHERE 1=1
+       	<if test="fileName != null and fileName!='' ">
+        	and file.fileName = #{fileName}
+       	</if>
+       	<if test="fileId != null ">
+        	and file.id = #{fileId}
+       	</if>
+    </select>
+    <!--  防止密码外泄，取消密码列 -->
+ 	<select id="findByPage"  resultMap="base" parameterType="BaseFile">
+		SELECT file.*, org.name as orgName,item.name as itemName
+		FROM jy_base_file file
+		LEFT JOIN JY_BASE_ORG org ON org.id = file.orgId
+		left join jy_data_dict_item item on item.value = file.fileProp
+		left join jy_data_dict dict on dict.id = item.dictId and dict.dataKey='fileProp'
+		<where>
+		   	<if test="param.fileName != null and param.fileName!='' ">
+				AND file.fileName LIKE CONCAT('%',#{param.fileName},'%')
+		   	</if>
+			<if test="param.fileNo != null and param.fileNo!='' ">
+				AND file.fileNo LIKE CONCAT('%',#{param.fileNo},'%')
+			</if>
+		   	<if test="param.barcode!= null">
+				AND file.barcode LIKE CONCAT('%',#{param.barcode},'%')
+		   	</if>
+			<if test="param.orgId != null ">
+				AND file.orgId = #{param.orgId}
+		   	</if>
+		   	<if test="param.isValid != null  and param.isValid!=''">
+				AND file.isValid = #{param.isValid}
+		   	</if>
+			<if test="param.description != null  and param.description!=''">
+				AND file.description = #{param.description}
+			</if>
+			<if test="param.beginTime != null and param.beginTime!='' and param.endTime != null and param.endTime!='' ">
+				<![CDATA[
+				AND file.inputTime >= #{param.beginTime} and file.inputTime <= #{param.endTime}
+				]]>
+			</if>
+		</where>
+        ORDER BY file.inputTime desc
+    </select>  
+    <select id="count"  resultType="int" parameterType="BaseFile">
+       SELECT count(*) FROM jy_base_file t  WHERE 1=1
+    </select>        
+ 	<insert id="insert"  parameterType="BaseFile">
+		<![CDATA[
+		INSERT INTO jy_base_file(id,fileNo,fileProp,fileName,barcode,orgId,inputTime,isValid,createTime,description)
+		VALUES (#{fileId},#{fileNo},#{fileProp},#{fileName},#{barcode},#{orgId},#{inputTime},#{isValid},#{createTime},#{description})
+		]]>
+	</insert>
+	<delete id="delete" parameterType="BaseFile">
+		delete from jy_base_file
+		WHERE id = #{fileId}
+	</delete>
+	<delete id="deleteBatch" parameterType ="java.util.List">
+		DELETE FROM jy_base_file WHERE id in(
+		<foreach item="o" collection="list" open="" separator="," close="" >
+			#{o.fileId}
+		</foreach>
+		)
+	</delete>
+	<update id="update" parameterType="BaseFile">
+		UPDATE jy_base_file
+		SET isValid = #{isValid},
+			orgId = #{orgId},
+			fileProp = #{fileProp},
+			fileNo = #{fileNo},
+			inputTime = #{inputTime},
+			updateTime = #{updateTime},
+			description = #{description}
+		WHERE id = #{fileId}
+	</update>
+    <!-- 这方法能获取密码和盐 -->
+    <select id="findFormatByFileName"  resultMap="base" parameterType="String">
+		<![CDATA[
+       	SELECT file.*
+       	FROM jy_base_file file
+       	WHERE 1=1
+       		AND file.isvalid='1'
+       		AND file.fileName = #{fileName,jdbcType=VARCHAR}
+       ]]>  
+    </select>
+    <select id="findFileById"  resultMap="base" parameterType="String">
+		SELECT  file.*,org.name as orgName
+       	FROM jy_base_file file
+       	LEFT JOIN JY_BASE_ORG org ON org.id = file.orgId
+        WHERE file.fileId = #{fileId}
+    </select>
+	<select id="getOrgs" resultMap="ZNodes">
+		SELECT org.id,org.pId, org.name, 'o' as other
+		FROM jy_base_org org
+		WHERE org.isValid = '1'
+	</select>
+    <select id="findCountByFileName" resultType="int">
+       	SELECT COUNT(*)
+		FROM jy_base_file file
+       	WHERE  file.fileName=#{fileName}
+    </select> 
+</mapper>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uucastle.repository.file.FilevirtualDao">
+	<!--  com.uucastlecastle.entity.file.Filevirtual -->
+    <resultMap id="base" type="BaseFilevirtual">
+      <id column="ID" jdbcType="VARCHAR" property="fileId"/>
+      <!--<association property="loginLog" column="ID" javaType="LoginLog" select="getLoginLogById" />
+      <collection  property="poss"     column="ID" ofType="basePos" select="getPoss"/> -->
+    </resultMap> 
+    <!--<resultMap id="LoginLog" type="LoginLog" ></resultMap>-->
+    <resultMap id="ZNodes" type="com.uucastle.common.utils.tree.entity.ZNodes"></resultMap>
+    <!--<resultMap id="basePos" type="BasePos"></resultMap>-->
+    <!-- 防止密码外泄，取消密码列 -->
+    <select id="find" resultMap="base" parameterType="BaseFilevirtual">
+		SELECT file.*, org.name as orgName
+		FROM jy_base_filevirtual file
+      	LEFT JOIN JY_BASE_ORG org ON org.id = file.orgId
+		WHERE 1=1
+       	<if test="fileName != null and fileName!='' ">
+        	and file.fileName = #{fileName}
+       	</if>
+		<if test="fileId != null ">
+			and file.id = #{fileId}
+		</if>
+    </select>
+    <!--  防止密码外泄，取消密码列 -->
+ 	<select id="findByPage"  resultMap="base" parameterType="BaseFilevirtual">
+		SELECT file.*, org.name as orgName
+		FROM jy_base_filevirtual file
+		LEFT JOIN JY_BASE_ORG org ON org.id = file.orgId
+		<where>
+		   	<if test="param.fileName != null and param.fileName!='' ">
+				AND file.fileName LIKE CONCAT('%',#{param.fileName},'%')
+		   	</if>
+		   	<if test="param.barcode!= null">
+				AND file.barcode LIKE CONCAT('%',#{param.barcode},'%')
+		   	</if>
+			<if test="param.orgId != null ">
+				AND file.orgId = #{param.orgId}
+		   	</if>
+		   	<if test="param.isValid != null ">
+				AND file.isValid = #{param.isValid}
+		   	</if>
+		</where>
+        ORDER BY file.createTime desc
+    </select>  
+    <select id="count"  resultType="int" parameterType="BaseFilevirtual">
+       SELECT count(*) FROM jy_base_filevirtual t  WHERE 1=1
+    </select>        
+ 	<insert id="insert"  parameterType="BaseFilevirtual">
+		<![CDATA[
+		INSERT INTO jy_base_filevirtual(id,fileName,barcode,orgId,isValid,createTime,description)
+		VALUES (#{fileId},#{fileName},#{barcode},#{orgId},#{isValid},#{createTime},#{description})
+		]]>
+	</insert>
+	<delete id="delete" parameterType="BaseFilevirtual">
+		delete from jy_base_filevirtual
+		WHERE id = #{fileId}
+	</delete>
+	<delete id="deleteBatch" parameterType ="java.util.List">
+		DELETE FROM jy_base_filevirtual WHERE id in(
+		<foreach item="o" collection="list" open="" separator="," close="" >
+			#{o.fileId}
+		</foreach>
+		)
+	</delete>
+	<update id="update" parameterType="BaseFilevirtual">
+		UPDATE jy_base_filevirtual
+		SET isValid = #{isValid},
+			orgId = #{orgId},
+			updateTime = #{updateTime},
+			description = #{description}
+		WHERE id = #{fileId}
+	</update>
+    <!-- 这方法能获取密码和盐 -->
+    <select id="findFormatByBarcode"  resultMap="base" parameterType="String">
+		<![CDATA[
+       	SELECT file.*
+       	FROM jy_base_filevirtual file
+       	WHERE 1=1
+       		AND file.isvalid='1'
+       		AND file.barcode = #{barcode,jdbcType=VARCHAR}
+       ]]>
+    </select>
+    <select id="findFileById"  resultMap="base" parameterType="String">
+		SELECT  file.*,org.name as orgName
+       	FROM jy_base_filevirtual file
+       	LEFT JOIN JY_BASE_ORG org ON org.id = file.orgId
+        WHERE file.fileId = #{fileId}
+    </select>
+	<select id="getOrgs" resultMap="ZNodes">
+		SELECT org.id,org.pId, org.name, 'o' as other
+		FROM jy_base_org org
+		WHERE org.isValid = '1'
+	</select>
+    <select id="findCountByFileName" resultType="int">
+       	SELECT COUNT(*)
+		FROM jy_base_filevirtual file
+       	WHERE  file.fileName=#{fileName}
+    </select> 
+</mapper>
